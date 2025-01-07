@@ -44,15 +44,17 @@ class Prenota:
             """
         })
         try:
+            # URL com o CNPJ passado dinamicamente
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
             driver.get(url)
+            # Verifique a URL atual
+            time.sleep(3) 
             current_url = driver.current_url
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
-            WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
 
             if current_url == expected_url:
                 cookies = driver.get_cookies()
-                print("Cookies:", cookies)
+                print("Cookies:", cookies, current_url)
                 driver.quit()
                 return {"status": "success", "cookies": cookies}
             else:
@@ -67,12 +69,17 @@ class Prenota:
 
 @app.route("/", methods=["POST"])
 def start_prenota():
+    # Obtém o CNPJ do corpo da requisição
     data = request.get_json()
     cnpj = data.get("cnpj")
+    print(cnpj)
+    
     if not cnpj:
         return jsonify({"status": "error", "message": "CNPJ is required"}), 400
+
+  
     response = Prenota.run(cnpj)
     return jsonify(response)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5009, debug=True)
