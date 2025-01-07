@@ -44,14 +44,12 @@ class Prenota:
             """
         })
         try:
-            # URL com o CNPJ passado dinamicamente
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
             driver.get(url)
             pickle.dump(driver.get_cookies(), open("cookies.pkl", "wb"))
             cookies = pickle.load(open("cookies.pkl", "rb"))
             cookies_info = []
             for cookie in cookies:
-                logging.info(f"Timestamp: {cookie} - tester files available.")
                 cookies_info.append(cookie)
             driver.quit()
             return {"status": "success", "cookies": cookies_info}
@@ -62,15 +60,10 @@ class Prenota:
 
 @app.route("/", methods=["POST"])
 def start_prenota():
-    # Obtém o CNPJ do corpo da requisição
     data = request.get_json()
     cnpj = data.get("cnpj")
-    print(cnpj)
-    
     if not cnpj:
         return jsonify({"status": "error", "message": "CNPJ is required"}), 400
-
-  
     response = Prenota.run(cnpj)
     return jsonify(response)
 
