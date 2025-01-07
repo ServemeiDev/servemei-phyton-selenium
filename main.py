@@ -48,7 +48,7 @@ class Prenota:
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
             driver.get(url)
             # Verifique a URL atual
-            time.sleep(3) 
+            time.sleep(10) 
             current_url = driver.current_url
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
 
