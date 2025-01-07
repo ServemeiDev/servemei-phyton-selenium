@@ -46,13 +46,21 @@ class Prenota:
         try:
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
             driver.get(url)
-            pickle.dump(driver.get_cookies(), open("cookies.pkl", "wb"))
-            cookies = pickle.load(open("cookies.pkl", "rb"))
-            cookies_info = []
-            for cookie in cookies:
-                cookies_info.append(cookie)
+            # Verifique a URL atual
+            time.sleep(10) 
+            current_url = driver.current_url
+            expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
+
+            if current_url == expected_url:
+                cookies = driver.get_cookies()
+                print("Cookies:", cookies)
+                driver.quit()
+                return {"status": "success", "cookies": cookies}
+            else:
+                print(f"A URL atual é {current_url}, não a esperada.")
+                
             driver.quit()
-            return {"status": "success", "cookies": cookies_info}
+            return {"status": "error", "message": "URL não corresponde"}
         except Exception as e:
             logging.error(f"Exception: {e}")
             driver.quit()
