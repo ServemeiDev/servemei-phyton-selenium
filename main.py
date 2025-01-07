@@ -46,10 +46,9 @@ class Prenota:
         try:
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
             driver.get(url)
-            # Verifique a URL atual
-            time.sleep(10) 
             current_url = driver.current_url
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
+            WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
 
             if current_url == expected_url:
                 cookies = driver.get_cookies()
