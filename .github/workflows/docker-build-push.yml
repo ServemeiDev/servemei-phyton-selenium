@@ -29,8 +29,8 @@ jobs:
         run: |
           set -e
 
-          # Diretório do projeto no servidor
-          PROJECT_DIR="/home/servemei-phyton"
+        
+          PROJECT_DIR="servemei-phyton"
           REPO_URL="git@github.com:ServelojaDev/servemei-phyton-selenium.git"  # Link SSH do repositório
 
           # Atualize ou clone o repositório
