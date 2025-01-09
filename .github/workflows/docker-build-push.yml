@@ -1,29 +1,37 @@
 name: Deploy to DigitalOcean
+
 on:
   push:
     branches:
-      - main  
+      - main  # O deploy será acionado quando houver push na branch main
+
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Utiliza um ambiente Ubuntu para executar o deploy
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3  # Faz checkout do código do repositório
 
-      - name: Set up SSH
+      - name: Set up SSH for GitHub
+        run: |
+          mkdir -p ~/.ssh
+          echo "$GIT_SECRET" > ~/.ssh/id_rsa  # Usa a chave privada do GitHub Secret
+          chmod 600 ~/.ssh/id_rsa  # Defina permissões corretas para a chave privada
+          ssh-keyscan github.com >> ~/.ssh/known_hosts  # Adiciona a chave SSH do GitHub aos hosts conhecidos
+
+      - name: Set up SSH for DigitalOcean
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.DROPLET_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.DROPLET_SSH_PRIVATE_KEY }}  # Usa a chave privada do servidor DigitalOcean
 
       - name: Deploy to DigitalOcean
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DROPLET_SSH_USERNAME }}@${{ secrets.DROPLET_SSH_HOST }} << 'EOF'
           set -e
 
           # Diretório do projeto no servidor
           PROJECT_DIR="/home/servemei-phyton"
-          REPO_URL="git@github.com:ServelojaDev/servemei-phyton-selenium.git"  # Mudança para HTTP
+          REPO_URL="git@github.com:ServelojaDev/servemei-phyton-selenium.git"  # Link SSH do repositório
 
           # Atualize ou clone o repositório
           if [ ! -d "$PROJECT_DIR" ]; then
@@ -32,22 +40,22 @@ jobs:
           else
               echo "Atualizando o repositório..."
               cd $PROJECT_DIR
-              git pull
+              git pull origin main  # Puxa as últimas alterações da branch main
           fi
 
           # Certifique-se de que está no diretório do projeto
           cd $PROJECT_DIR
 
-          # Configure o virtual environment
+          # Configure o ambiente virtual
           if [ ! -d "venv" ]; then
-              echo "Criando o virtual environment..."
+              echo "Criando o ambiente virtual..."
               python3 -m venv venv
           fi
 
-          # Ative o virtual environment e instale as dependências
+          # Ative o ambiente virtual e instale as dependências
           source venv/bin/activate
+          pip install --upgrade pip  # Atualizando pip
           pip install -r requirements.txt
           deactivate
 
           echo "Deploy concluído com sucesso."
-          EOF
