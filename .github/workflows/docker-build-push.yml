@@ -23,7 +23,7 @@ jobs:
 
           # Diretório do projeto no servidor
           PROJECT_DIR="/home/servemei-phyton"
-          REPO_URL="git@github.com:ServelojaDev/servemei-phyton-selenium.git"
+          REPO_URL="https://github.com/ServelojaDev/servemei-phyton-selenium.git"  # Mudança para HTTP
 
           # Atualize ou clone o repositório
           if [ ! -d "$PROJECT_DIR" ]; then
