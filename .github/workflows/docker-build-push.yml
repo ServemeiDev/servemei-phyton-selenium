@@ -1,47 +1,40 @@
-name: Build and Push Docker Image
+name: Deploy to DigitalOcean
 on:
   push:
     branches:
-      - main
-
+      - main  
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          ssh-private-key: ${{ secrets.DIGITALOCEAN_SSH_KEY }}
 
-      - name: Build and Push Docker Image
+      - name: Deploy to DigitalOcean
         run: |
-          docker build -t produtosserveloja/servemeiselenium .
-          docker push produtosserveloja/servemeiselenium
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DROPLET_SSH_USERNAME }}@${{ secrets.DROPLET_SSH_HOST }} << 'EOF'
+          set -e
 
-  deploy-to-droplet:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+          # Diretório do projeto no servidor
+          PROJECT_DIR="/home/servemei-phyton"
 
-      - name: Install SSH client
-        run: sudo apt-get install -y openssh-client
+          # Atualize o repositório
+          if [ ! -d "$PROJECT_DIR" ]; then
+             git clone git@github.com:ServelojaDev/servemei-phyton-selenium.git $PROJECT_DIR
+          else
+              cd $PROJECT_DIR
+              git pull
+          fi
 
-      - name: SSH into Droplet, pull image, and run container
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.DROPLET_SSH_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USERNAME }}
-          key: ${{ secrets.DROPLET_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          script: |
-            docker pull produtosserveloja/servemeiselenium
-            docker stop servemeiselenium || true
-            docker rm servemeiselenium || true
-            sudo docker run -d --name servemeiselenium --restart always --network host -p 5000:5000 produtosserveloja/servemeiselenium
-           
+          # Instale dependências Python
+          cd $PROJECT_DIR
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+          EOF
