@@ -1,23 +1,22 @@
 import os
 import pickle
 from flask import Flask, jsonify, request
-from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver import ChromeOptions
-from selenium.webdriver.support.ui import Select
 from datetime import datetime
 from selenium.common.exceptions import NoSuchElementException
-from time import sleep
 import logging
-import yaml
 import sys
-import time
 import random
+import time
+from selenium import webdriver
 import undetected_chromedriver as udc
 from fake_useragent import UserAgent
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from extension import proxies
 
 logging.basicConfig(
     format="%(levelname)s:%(message)s",
@@ -27,43 +26,42 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
+
 class Prenota:
     @staticmethod
     def run(cnpj):
-        options = udc.ChromeOptions()
-        options.headless = True
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-blink-features=AutomationControlled")
+        proxies_extension = proxies('spphm86cju', 'ik18bprcRnN4OxU=3d', 'gate.smartproxy.com', '7000')
+        chrome_options = udc.ChromeOptions()
+        chrome_options.headless = True
+        chrome_options.add_extension(proxies_extension)
+       
+        chrome_options.add_argument("--disable-gpu")  # Desabilita aceleração de GPU (necessário no modo headless)
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")  # Evita que o Chrome seja detectado como automatizado 
         ua = UserAgent()
         user_agent = ua.random
-        options.add_argument(f'--user-agent={user_agent}')
-        driver = udc.Chrome(use_subprocess=True, options=options)
+        chrome_options.add_argument(f'--user-agent={user_agent}')
+        driver = udc.Chrome(use_subprocess=True, options=chrome_options)
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             """
         })
-        try:
+    
+       
+        try:            
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
             driver.get(url)
-            current_url = driver.current_url
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
-
-            if current_url == expected_url:
-                cookies = driver.get_cookies()
-                print("Cookies:", cookies)
-                driver.quit()
-                return {"status": "success", "cookies": cookies}
-            else:
-                print(f"A URL atual é {current_url}, não a esperada.")
-                
+            cookies = driver.get_cookies()
+            print("Cookies:", cookies)
             driver.quit()
-            return {"status": "error", "message": "URL não corresponde"}
+            return {"status": "success", "cookies": cookies}
         except Exception as e:
             logging.error(f"Exception: {e}")
             driver.quit()
             return {"status": "error", "message": str(e)}
+
 
 @app.route("/", methods=["POST"])
 def start_prenota():
@@ -71,8 +69,10 @@ def start_prenota():
     cnpj = data.get("cnpj")
     if not cnpj:
         return jsonify({"status": "error", "message": "CNPJ is required"}), 400
+
     response = Prenota.run(cnpj)
     return jsonify(response)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Configuração de produção
+    app.run(host="0.0.0.0", port=5000, debug=False)
