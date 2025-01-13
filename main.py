@@ -102,7 +102,7 @@ class Prenota:
             driver.quit()
             return {"status": "error", "message": str(e), "cookies": []}
 
-@app.route("/", methods=["POST"])
+@app.route("/dasn", methods=["POST"])
 def start_prenota():
     # Obtém o CNPJ do corpo da requisição
     data = request.get_json()
