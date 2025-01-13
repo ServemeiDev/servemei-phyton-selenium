@@ -92,7 +92,6 @@ class Prenota:
             continuar_button.click()
 
             time.sleep(2) 
-            current_url = driver.current_url
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Home/Inicio'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
