@@ -19,11 +19,6 @@ from selenium.webdriver.common.proxy import Proxy, ProxyType
 from extension import proxies
 from selenium.webdriver.common.action_chains import ActionChains 
 
-logging.basicConfig(
-    format="%(levelname)s:%(message)s",
-    level=logging.INFO,
-    handlers=[logging.FileHandler("/tmp/out.log"), logging.StreamHandler(sys.stdout)],
-)
 
 app = Flask(__name__)
 
@@ -32,24 +27,37 @@ class Prenota:
     @staticmethod
     def run(cnpj):
         options = udc.ChromeOptions()
-        options.headless = True
+        options.headless = False
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-blink-features=AutomationControlled")
         ua = UserAgent()
         user_agent = ua.random
         options.add_argument(f'--user-agent={user_agent}')
-        driver = udc.Chrome(use_subprocess=True, options=options)
+        driver = udc.Chrome(use_subprocess=False, options=options)
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             """
         })
+        
+       
         try:
-            # URL com o CNPJ passado dinamicamente
-            url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/mobile/{cnpj}'
+            url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
             driver.get(url)
-            # Verifique a URL atual
-            time.sleep(3) 
+            time.sleep(2)         
+            input_element = driver.find_element(By.CSS_SELECTOR, "#identificacao-cnpj")
+            input_element.click()
+            time.sleep(2)
+            for char in cnpj:
+                input_element.send_keys(char)
+                time.sleep(1)
+    
+            time.sleep(5) 
+            continuar_button = driver.find_element(By.CSS_SELECTOR, "#identificacao-continuar")
+            continuar_button.click()
+             
+            time.sleep(2) 
+
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
@@ -77,21 +85,21 @@ class Prenota:
             """
         })
         try:
-            # URL com o CNPJ passado dinamicamente
             url = f'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Identificacao'
             driver.get(url)
-            time.sleep(2) 
-            # Verifique a URL atual
+               
             input_element = driver.find_element(By.CSS_SELECTOR, "#cnpj")
-            input_element.clear()
-            input_element.send_keys(cnpj)
-            time.sleep(2) 
-
-            continuar_button = WebDriverWait(driver, 10).until(
+            input_element.click()
+            time.sleep(2)
+            for char in cnpj:
+                input_element.send_keys(char)
+                time.sleep(0.1)
+    
+            continuar_button = WebDriverWait(driver, 0).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#continuar")))
             continuar_button.click()
 
-            time.sleep(2) 
+         
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Home/Inicio'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
