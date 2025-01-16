@@ -18,6 +18,92 @@ from fake_useragent import UserAgent
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from extension import proxies
 from selenium.webdriver.common.action_chains import ActionChains 
+import requests
+import ultils
+from urllib.parse import quote
+from bs4 import BeautifulSoup
+import base64
+
+class MyHTTPAdapter(requests.adapters.HTTPAdapter):
+    def send(self, request, **kwargs):
+        print(f"\n[Request] {request.method} {request.url}")
+        print("Headers:", request.headers)
+        print("Body:", request.body)
+        response = super().send(request, **kwargs)
+        print(f"[Response] {response.status_code} {response.url}")
+        print("Headers:", response.headers)
+        print("Body:", response.text)
+        return response
+
+
+def get_data_atual():
+    current_date = datetime.now()
+    return current_date.strftime('%d/%m/%Y')
+
+def gerar_das(cookies, token, ano, mes):
+    url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/emissao/gerarDas'   
+    data = {
+         "__RequestVerificationToken": token,
+        'ano': str(ano),
+        'pa': f"{ano}{mes}",
+        'dataConsolidacao': get_data_atual(),
+    }
+
+    try:
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+        session = requests.Session()
+        session.cookies.update(cookie_dict)
+        response = session.post(url, data=data)
+        if response.status_code == 200:
+            return response.text
+        else:
+            return None
+    except Exception as error:
+        return None
+
+def post_emissao(cookies):
+    url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/emissao'
+    data = {
+        'ano': str(2023)
+    }
+    try:
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+        session = requests.Session()
+        session.cookies.update(cookie_dict)
+        response = session.post(url, data=data)
+        if response.status_code == 200:
+           soup = BeautifulSoup(response.text, 'html.parser')
+           csrf_token = soup.find('input', {'name': '__RequestVerificationToken'})
+           if csrf_token:
+                token_value = csrf_token.get('value')
+                return token_value
+           else:
+                print("CSRF Token não encontrado.")
+        else:
+            print(f"Erro na requisição POST: {response.status_code}")
+            return None
+    except Exception as error:
+        print(f"Erro ao realizar o POST: {error}")
+        return None
+
+def imprimir_das(cookies: str) -> str:
+    url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/emissao/imprimir" 
+    cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+    session = requests.Session()
+    session.cookies.update(cookie_dict)
+    try:
+        response = session.get(url)
+        response.raise_for_status()  # Levanta um erro para status HTTP 4xx/5xx
+        
+        if response.status_code == 200:
+            recibo_pdf = base64.b64encode(response.content).decode('utf-8')
+            return recibo_pdf
+        else:
+            print(f"Erro na requisição GET: {response.status_code}")
+            return None
+    except requests.RequestException as error:
+        print(f"Erro ao realizar o GET: {error}")
+        return None
 
 
 app = Flask(__name__)
@@ -50,7 +136,7 @@ class Prenota:
             time.sleep(2)
             for char in cnpj:
                 input_element.send_keys(char)
-                time.sleep(1)
+                time.sleep(0)
     
             time.sleep(5) 
             continuar_button = driver.find_element(By.CSS_SELECTOR, "#identificacao-continuar")
@@ -61,7 +147,14 @@ class Prenota:
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
-            print("Cookies:", cookies)
+            cokiesString = cookies_to_string(cookies)
+            print(cokiesString)
+            
+            
+             
+            
+
+            print("Cookies:", cokiesString)
             driver.quit()
             return {"status": "success", "cookies": cookies}
         except Exception as e:
@@ -90,21 +183,22 @@ class Prenota:
                
             input_element = driver.find_element(By.CSS_SELECTOR, "#cnpj")
             input_element.click()
-            time.sleep(2)
+          
             for char in cnpj:
                 input_element.send_keys(char)
-                time.sleep(0.1)
-    
+                time.sleep(0)
+            time.sleep(2)
             continuar_button = WebDriverWait(driver, 0).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#continuar")))
             continuar_button.click()
-
-         
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Home/Inicio'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
-            driver.quit()
-            return {"status": "success", "cookies": cookies}
+            token =  post_emissao(cookies)
+            response_data =  gerar_das(cookies, token, '2025', '01')
+            imprimir = imprimir_das(cookies)
+            return {"status": "success", "data": imprimir}
+          
         except Exception as e:
             logging.error(f"Exception: {e}")
             driver.quit()
@@ -121,7 +215,7 @@ def start_prenota():
         return jsonify({"status": "error", "message": "CNPJ is required"}), 400
 
   
-    response = Prenota.run(cnpj)
+    Prenota.run(cnpj)
     return jsonify(response)
 
 @app.route("/das", methods=["POST"])
