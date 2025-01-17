@@ -265,8 +265,8 @@ class Prenota:
                 mes_str = f"{mes:02d}" 
 
                 gerar = gerar_das(cookies, token, ano, mes_str)
-
-                if "mensagem" in gerar and gerar["mensagem"]:
+                print(gerar)
+                if "mensagem" in gerar and gerar["mensagem"] and gerar["mensagem"] != "Os documentos (DAS) foram gerados com sucesso!":
                     resultados.append({
                     "mes": f"{ano}{mes:02d}",
                     "message": gerar["mensagem"],
