@@ -23,7 +23,7 @@ import ultils
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 import base64
-from das import post_emissao, get_data_atual, gerar_das, apurar_das
+from das import post_emissao, get_data_atual, gerar_das, apurar_das,imprimir_das
 from dasn import get_csrf_token_dasn, get_second_csrf_token_dasn, fetch_value_dasn, send_dasn
 
 

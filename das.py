@@ -3,6 +3,7 @@ import ultils
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from datetime import datetime
+import base64
 
 def get_data_atual():
     current_date = datetime.now()
