@@ -2,6 +2,8 @@ import requests
 import ultils
 from urllib.parse import quote
 from bs4 import BeautifulSoup
+import requests
+import base64
 
 def get_second_csrf_token_dasn(token: str, ano: int, cookies: str):
     url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Declaracao/Iniciar'
@@ -92,7 +94,7 @@ def fetch_value_dasn(cookies: str, receita_comercio: str, receita_servico: str, 
         csrf_token_input = soup.select_one('form input[name="__RequestVerificationToken"]')
         csrf_token = csrf_token_input['value'] if csrf_token_input else None
 
-        return {'csrfToken': csrf_token}
+        return csrf_token
 
     except requests.exceptions.RequestException as error:
         cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
@@ -120,4 +122,80 @@ def send_dasn(token: str, cookies: str):
         return None
     except Exception as error:
         print(f"Erro ao realizar o POST: {error}")
+        return None
+
+
+def fetch_receipt_pdf(cookies: str) -> dict:
+    try:
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+        session = requests.Session()
+        session.cookies.update(cookie_dict)
+        url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Transmissao/ReciboPDF" 
+        response = session.post(url)
+        response.raise_for_status()
+
+        pdf_base64 = base64.b64encode(response.content).decode("utf-8")
+        return pdf_base64
+
+    except requests.RequestException as e:
+        print(f"Erro ao buscar o recibo: {e}")
+        return {"receipt": None}
+
+def fetch_das_execao_pdf(cookies: str) -> dict:
+    try:
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+        session = requests.Session()
+        session.cookies.update(cookie_dict)
+        url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Transmissao/DasExcessoPDF" 
+        response = session.post(url)
+        response.raise_for_status()
+
+        pdf_base64 = base64.b64encode(response.content).decode("utf-8")
+        response.raise_for_status()
+        if not pdf_base64:  
+            return None
+
+        return pdf_base64
+
+    except requests.RequestException as e:
+        print(f"Erro ao buscar o recibo: {e}")
+        return {"receipt": None}
+
+def fetch_darf(cookies: str) -> dict:
+    try:
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+        session = requests.Session()
+        session.cookies.update(cookie_dict)
+        url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Transmissao/DarfPDF" 
+        response = session.post(url)
+        response.raise_for_status()
+        pdf_base64 = base64.b64encode(response.content).decode("utf-8")
+        response.raise_for_status()
+        if not pdf_base64:  
+            return None
+
+        return pdf_base64
+
+    except requests.RequestException as e:
+        print(f"Erro ao buscar o recibo: {e}")
+        return  None
+
+def fetch_notificacao(cookies: str) -> dict:
+    try:
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+        session = requests.Session()
+        session.cookies.update(cookie_dict)
+        url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Transmissao/NotificacaoMultaPDF" 
+        response = session.post(url)
+        response.raise_for_status()
+        pdf_base64 = base64.b64encode(response.content).decode("utf-8")
+        response.raise_for_status()
+        if not pdf_base64:  
+            return None
+
+        return pdf_base64
+
+
+    except requests.RequestException as e:
+        print(f"Erro ao buscar o recibo: {e}")
         return None
