@@ -24,7 +24,7 @@ from urllib.parse import quote
 from bs4 import BeautifulSoup
 import base64
 from das import post_emissao, get_data_atual, gerar_das, apurar_das
-from dasn import get_csrf_token_dasn, get_second_csrf_token_dasn, fetch_value_dasn
+from dasn import get_csrf_token_dasn, get_second_csrf_token_dasn, fetch_value_dasn, send_dasn, fetch_receipt_pdf
 
 
 
@@ -33,7 +33,7 @@ app = Flask(__name__)
 
 class WebScraper:
     @staticmethod
-    def run(cnpj):
+    def run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado):
         options = udc.ChromeOptions()
         options.headless = False
         options.add_argument("--disable-gpu")
@@ -69,14 +69,23 @@ class WebScraper:
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
             token = get_csrf_token_dasn(cookies)
-            token2 = get_second_csrf_token_dasn(token, '2022', cookies)
-            token3 = fetch_value_dasn(cookies, '1.000,00', '0,00', False, token2)
-            token4 = send_dasn(token3)
-            print(token2)
+            token2 = get_second_csrf_token_dasn(token, ano, cookies)
+            token3 = fetch_value_dasn(cookies, receita_comercio, receita_servico, informacao_empregado, token2)
+            token4 = send_dasn(token3, cookies)
+            pdf = fetch_receipt_pdf(cookies)
+            pdfExcessao = fetch_das_execao_pdf(cookies) or ""
+            pdfDarf = fetch_darf(cookies) or ""
+            pdfNotificacao = fetch_notificacao(cookies) or ""
 
-            print("Cookies:", token2)
+            result = {
+                "pdfExcessao": pdf_excessao,
+                "pdfDarf": pdf_darf,
+                "pdf": pdf,
+                "pdfNotificacao": pdfNotificacao
+            }
+
             driver.quit()
-            return {"status": "success", "cookies": token3}
+            return result
         except Exception as e:
             logging.error(f"Exception: {e}")
             driver.quit()
@@ -136,15 +145,12 @@ class WebScraper:
 
             for mes in range(1, 13): 
                 mes_str = f"{mes:02d}" 
-
                 gerar = gerar_das(cookies, token, ano, mes_str)
-                print(gerar)
                 if "mensagem" in gerar and gerar["mensagem"] and gerar["mensagem"] != "Os documentos (DAS) foram gerados com sucesso!":
                     resultados.append({
                     "mes": f"{ano}{mes:02d}",
                     "message": gerar["mensagem"],
                     })
-
                 else:
 
                     imprimir = imprimir_das(cookies)
@@ -165,29 +171,48 @@ class WebScraper:
 
 @app.route("/dasn", methods=["POST"])
 def start_prenota():
-
     data = request.get_json()
     cnpj = data.get("cnpj")
-    if not cnpj:
-        return jsonify({"status": "error", "message": "CNPJ is required"}), 400
+    ano = data.get("ano")
+    receita_servico = data.get("receita_servico")
+    receita_comercio = data.get("receita_comercio")
+    informacao_empregado = data.get("informacao_empregado")
+    
+    required_params = {
+        "cnpj": cnpj,
+        "ano": ano,
+        "receita_servico": receita_servico,
+        "receita_comercio": receita_comercio,
+    }
 
-    response = WebScraper.run(cnpj)
+
+    missing_params = [key for key, value in required_params.items() if not value]
+
+    if "informacao_empregado" not in data:
+        missing_params.append("informacao_empregado")
+
+
+    if missing_params:
+        return jsonify({
+            "status": "error",
+            "message": f"The following parameter(s) are required: {', '.join(missing_params)}"
+        }), 400
+
+    response = WebScraper.run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado)
     return jsonify(response)
 
 @app.route("/das", methods=["POST"])
 def start_prenota_das():
-    # Obtém o CNPJ do corpo da requisição
+   
     data = request.get_json()
     cnpj = data.get("cnpj")
     ano = data.get("ano")
     isApuration = data.get("isApuration")
-    print(cnpj)
-    
-    # Validação do CNPJ
+ 
     if not cnpj:
         return jsonify({"status": "error", "message": "CNPJ is required"}), 400
 
-    # Validação do Ano
+   
     if not ano:
         return jsonify({"status": "error", "message": "Ano is required"}), 400
     
