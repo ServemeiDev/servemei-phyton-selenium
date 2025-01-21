@@ -1,3 +1,4 @@
+
 import os
 import pickle
 from flask import Flask, jsonify, request
@@ -25,13 +26,56 @@ from bs4 import BeautifulSoup
 import base64
 from das import post_emissao, get_data_atual, gerar_das, apurar_das, imprimir_das
 from dasn import get_csrf_token_dasn, get_second_csrf_token_dasn, fetch_value_dasn, send_dasn, fetch_receipt_pdf, fetch_darf, fetch_das_execao_pdf, fetch_notificacao
-
+import pdfkit
 
 
 app = Flask(__name__)
-
-
+config = pdfkit.configuration(wkhtmltopdf=r'C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe') 
 class WebScraper:
+    @staticmethod
+    def getCardCnpj(cnpj, hcapcha):
+        url = 'https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/valida_recaptcha.asp'
+        try:
+            session = requests.Session()
+            session.get(url)
+            cookies = session.cookies
+            cookie_list = [f"{cookie.name}={cookie.value}" for cookie in cookies]
+            cookie_joined = "; ".join(cookie_list)
+            data = {
+                'origem': 'comprovante',
+                'cnpj': cnpj,  
+                'h-captcha-response': hcapcha,  
+                'search_type': 'cnpj'
+            }
+
+            cookies = {
+                'Cookie': cookie_joined  
+            }
+
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded', 
+            }
+
+            response = requests.post(url, data=data, headers=headers, cookies=cookies)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            table = soup.select_one('#principal table')
+            if not table:
+                return {"status": "error", "data": "Tabela não encontrada no HTML"}
+            table_html = str(table).replace(
+				'src="images/brasao2.gif"', 
+				'src="https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/images/brasao2.gif"'
+			)
+			
+            pdf_bytes = pdfkit.from_string(f'<html><head><meta charset="UTF-8"></head><body>{table_html}</body></html>' , False ,options={ 
+				
+			}, configuration=config) 
+            pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            return {"status": "success", "data": pdf_base64}
+    
+        except Exception as error:
+            print(f"Erro ao realizar o GET: {error}")
+            return {"status": "error", "data": "", "message": str(error)}
+
     @staticmethod
     def run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado):
         options = udc.ChromeOptions()
@@ -193,44 +237,6 @@ def start_prenota():
 
     response = WebScraper.run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado)
     return jsonify(response)
-
-@staticmethod
-def getCardCnpj(cnpj, hcapcha):
-        url = 'https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/valida_recaptcha.asp'
-        try:
-            session = requests.Session()
-            session.get(url)
-            cookies = session.cookies
-            cookie_list = [f"{cookie.name}={cookie.value}" for cookie in cookies]
-            cookie_joined = "; ".join(cookie_list)
-            data = {
-                'origem': 'comprovante',
-                'cnpj': cnpj,  
-                'h-captcha-response': hcapcha,  
-                'search_type': 'cnpj'
-            }
-
-            cookies = {
-                'Cookie': cookie_joined  
-            }
-
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded', 
-            }
-
-            response = requests.post(url, data=data, headers=headers, cookies=cookies)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            table = soup.select_one('#principal table')
-            if not table:
-                return {"status": "error", "data": "Tabela não encontrada no HTML"}
-            table_html = str(table) 
-            pdf_bytes = HTML(string=table_html).write_pdf()
-            pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
-            return {"status": "success", "data": pdf_base64}
-    
-        except Exception as error:
-            print(f"Erro ao realizar o GET: {error}")
-            return {"status": "error", "data": "", "message": str(error)}
         
 @app.route("/card_cnpj", methods=["POST"])
 def start_prenota_card():
@@ -246,7 +252,6 @@ def start_prenota_card():
 
     response = WebScraper.getCardCnpj(cnpj, hcapcha)
     return jsonify(response)
-
 
 @app.route("/das", methods=["POST"])
 def start_prenota_das():
