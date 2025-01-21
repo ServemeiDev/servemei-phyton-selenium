@@ -97,7 +97,6 @@ def fetch_value_dasn(cookies: str, receita_comercio: str, receita_servico: str, 
         return csrf_token
 
     except requests.exceptions.RequestException as error:
-        print(error.response.text)
         cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
         session = requests.Session()
         session.cookies.update(cookie_dict)
