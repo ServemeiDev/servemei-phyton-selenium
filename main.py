@@ -231,6 +231,7 @@ def getCardCnpj(cnpj, hcapcha):
         except Exception as error:
             print(f"Erro ao realizar o GET: {error}")
             return {"status": "error", "data": "", "message": str(error)}
+        
 @app.route("/card_cnpj", methods=["POST"])
 def start_prenota_card():
 
