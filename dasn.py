@@ -185,7 +185,7 @@ def fetch_notificacao(cookies: str) -> dict:
         cookie_dict = {cookie['name']: cookie['value'] for cookie in cookies}
         session = requests.Session()
         session.cookies.update(cookie_dict)
-        url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Transmissao/NotificacaoMultaPDFF" 
+        url = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Transmissao/NotificacaoMultaPDF" 
         response = session.post(url)
         response.raise_for_status()
         pdf_base64 = base64.b64encode(response.content).decode("utf-8")

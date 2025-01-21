@@ -23,7 +23,7 @@ import ultils
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 import base64
-from das import post_emissao, get_data_atual, gerar_das, apurar_das
+from das import post_emissao, get_data_atual, gerar_das, apurar_das, imprimir_das
 from dasn import get_csrf_token_dasn, get_second_csrf_token_dasn, fetch_value_dasn, send_dasn, fetch_receipt_pdf, fetch_darf, fetch_das_execao_pdf, fetch_notificacao
 
 
@@ -38,27 +38,20 @@ class WebScraper:
         options.headless = False
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-blink-features=AutomationControlled")
-        ua = UserAgent()
-        user_agent = ua.random
-        options.add_argument(f'--user-agent={user_agent}')
+ 
         driver = udc.Chrome(use_subprocess=False, options=options)
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            """
-        })
+      
         
-       
         try:
             url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
             driver.get(url)
             time.sleep(2)         
             input_element = driver.find_element(By.CSS_SELECTOR, "#identificacao-cnpj")
             input_element.click()
-            time.sleep(4)
+            time.sleep(2)
             for char in cnpj:
                 input_element.send_keys(char)
-                time.sleep(0)
+                time.sleep(0.1)
     
             time.sleep(2) 
             continuar_button = driver.find_element(By.CSS_SELECTOR, "#identificacao-continuar")     
@@ -78,8 +71,8 @@ class WebScraper:
             pdfNotificacao = fetch_notificacao(cookies) or ""
 
             result = {
-                "pdfExcessao": pdf_excessao,
-                "pdfDarf": pdf_darf,
+                "pdfExcessao": pdfExcessao,
+                "pdfDarf": pdfDarf,
                 "pdf": pdf,
                 "pdfNotificacao": pdfNotificacao
             }
