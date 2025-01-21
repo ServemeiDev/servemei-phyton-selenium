@@ -151,7 +151,6 @@ def fetch_das_execao_pdf(cookies: str) -> dict:
         response.raise_for_status()
 
         pdf_base64 = base64.b64encode(response.content).decode("utf-8")
-        response.raise_for_status()
         if not pdf_base64:  
             return None
 
@@ -170,7 +169,6 @@ def fetch_darf(cookies: str) -> dict:
         response = session.post(url)
         response.raise_for_status()
         pdf_base64 = base64.b64encode(response.content).decode("utf-8")
-        response.raise_for_status()
         if not pdf_base64:  
             return None
 
@@ -189,7 +187,6 @@ def fetch_notificacao(cookies: str) -> dict:
         response = session.post(url)
         response.raise_for_status()
         pdf_base64 = base64.b64encode(response.content).decode("utf-8")
-        response.raise_for_status()
         if not pdf_base64:  
             return None
 

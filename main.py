@@ -105,10 +105,22 @@ class WebScraper:
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/'
             WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
+            if not cookies:
+                return {"status": "error", "message": "No cookies found"}
+            
+            driver.quit()
             token = get_csrf_token_dasn(cookies)
+            if not token:
+                return {"status": "error", "message": "Erro ao obter o token CSRF"}
             token2 = get_second_csrf_token_dasn(token, ano, cookies)
+            if not token2:
+                return {"status": "error", "message": "Erro ao obter o segundo token CSRF"}
             token3 = fetch_value_dasn(cookies, receita_comercio, receita_servico, informacao_empregado, token2)
-            token4 = send_dasn(token3, cookies)
+
+            if "messageError" in token3 and token3["messageError"]:
+                return {"status": "error", "message": "Erro na validação dos dados da DASN"}
+            
+            send_dasn(token3, cookies)
             pdf = fetch_receipt_pdf(cookies)
             pdfExcessao = fetch_das_execao_pdf(cookies) or ""
             pdfDarf = fetch_darf(cookies) or ""
