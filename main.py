@@ -194,6 +194,59 @@ def start_prenota():
     response = WebScraper.run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado)
     return jsonify(response)
 
+@staticmethod
+def getCardCnpj(cnpj, hcapcha):
+        url = 'https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/valida_recaptcha.asp'
+        try:
+            session = requests.Session()
+            session.get(url)
+            cookies = session.cookies
+            cookie_list = [f"{cookie.name}={cookie.value}" for cookie in cookies]
+            cookie_joined = "; ".join(cookie_list)
+            data = {
+                'origem': 'comprovante',
+                'cnpj': cnpj,  
+                'h-captcha-response': hcapcha,  
+                'search_type': 'cnpj'
+            }
+
+            cookies = {
+                'Cookie': cookie_joined  
+            }
+
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded', 
+            }
+
+            response = requests.post(url, data=data, headers=headers, cookies=cookies)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            table = soup.select_one('#principal table')
+            if not table:
+                return {"status": "error", "data": "Tabela não encontrada no HTML"}
+            table_html = str(table) 
+            pdf_bytes = HTML(string=table_html).write_pdf()
+            pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            return {"status": "success", "data": pdf_base64}
+    
+        except Exception as error:
+            print(f"Erro ao realizar o GET: {error}")
+            return {"status": "error", "data": "", "message": str(error)}
+@app.route("/card_cnpj", methods=["POST"])
+def start_prenota_card():
+
+    data = request.get_json()
+    cnpj = data.get("cnpj")
+    hcapcha = data.get("hcapcha")
+    if not cnpj:
+        return jsonify({"status": "error", "message": "CNPJ is required"}), 400
+    
+    if not hcapcha:
+        return jsonify({"status": "error", "message": "hcapcha is required"}), 400
+
+    response = WebScraper.getCardCnpj(cnpj, hcapcha)
+    return jsonify(response)
+
+
 @app.route("/das", methods=["POST"])
 def start_prenota_das():
    
