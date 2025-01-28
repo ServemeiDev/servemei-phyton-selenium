@@ -78,19 +78,16 @@ class WebScraper:
 
     @staticmethod
     def run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado):
-        options = udc.ChromeOptions()
+        options = webdriver.ChromeOptions()
         options.headless = False
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        ua = UserAgent()
-        user_agent = ua.random
-        options.add_argument(f'--user-agent={user_agent}')
-        driver = udc.Chrome(use_subprocess=False, options=options)  
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            """
-        })
+     
+        options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+        options.add_argument("--start-maximized")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-gpu ")
+        options.add_argument("--no-sandbox")
+        driver = udc.Chrome(options=options)  
+        
       
         try:
             url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
