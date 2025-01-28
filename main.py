@@ -82,10 +82,16 @@ class WebScraper:
         options.headless = False
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-blink-features=AutomationControlled")
- 
-        driver = udc.Chrome(use_subprocess=False, options=options)
+        ua = UserAgent()
+        user_agent = ua.random
+        options.add_argument(f'--user-agent={user_agent}')
+        driver = udc.Chrome(use_subprocess=False, options=options)  
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            """
+        })
       
-        
         try:
             url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
             driver.get(url)
@@ -95,7 +101,7 @@ class WebScraper:
             time.sleep(2)
             for char in cnpj:
                 input_element.send_keys(char)
-                time.sleep(0.1)
+                time.sleep(0)
     
             time.sleep(2) 
             continuar_button = driver.find_element(By.CSS_SELECTOR, "#identificacao-continuar")     

@@ -74,7 +74,7 @@ def post_emissao(cookies, ano):
            else:
                print("CSRF Token não encontrado.")
            return None
-    except Exception as error:
+    except Exception as error: 
         print(f"Erro ao realizar o POST: {error}")
         return None
     
