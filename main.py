@@ -265,6 +265,13 @@ class WebScraper:
                                 return {"status": "error", "message": "Erro na requisição", "details": response.text}
 
                 return response.text
+            if site == "sp":
+                url = f'{urlLink}'
+                driver.get(url)
+                time.sleep(1)
+                second_url = driver.current_url
+                driver.quit()
+                return {"url": second_url}
         except Exception as e:
             logging.error(f"Exception: {e}")
             driver.quit()
