@@ -220,6 +220,60 @@ class WebScraper:
             logging.error(f"Exception: {e}")
             driver.quit()
             return {"status": "error", "message": str(e), "cookies": []}
+        
+    @staticmethod
+    def mlink(urlLink, site, url_generation_link):
+        options = udc.ChromeOptions()
+        options.headless = True
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        ua = UserAgent()
+        user_agent = ua.random
+        options.add_argument(f'--user-agent={user_agent}')
+        driver = udc.Chrome(use_subprocess=True, options=options)
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            """
+        })
+      
+        
+        try:
+            if site == 'ml':
+                url = f'{urlLink}'
+                driver.get(url)
+                WebDriverWait(driver, 1).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "a.andes-button.andes-button--large.andes-button--loud"))
+                )
+                ver_produto_button = driver.find_element(By.CSS_SELECTOR, "a.andes-button.andes-button--large.andes-button--loud")
+                product_url = ver_produto_button.get_attribute('href')
+                driver.quit()
+                if product_url:
+                            cookie = '_csrf=cilK0cT_vvnbpTSucD7sieFS; main_domain=; main_attributes=; categories=; backend_dejavu_info=j%3A%7B%7D; cp=49142886%7C1726523058556; c_ui-navigation=6.6.92; navigation_items=MLB4109790594%7C24012025211132-MLB3952575247%7C18012025211738%7CMLB32368926%7CMLB32368920-MLB3562113013%7C16122024002939%7CMLB28718265%7CMLB28718264-MLB3814147912%7C12112024123107%7CMLB24402074%7CMLB24402056-MLB3659444039%7C16102024192620%7CMLB29219683%7CMLB29219682; _d2id=9a7e608c-eef0-44b7-b3ed-46a5790a8bfb; orgnickp=PSYSALDANHA; ftid=sqOJLELbmikD8RkrgQ9QmTb5RctwuGoh-1736983166365; ssid=ghy-012609-Ux1SZqIrQXvqq8rupqNs43bRxhQ62X-__-155183551-__-1832507386050--RRR_0-RRR_0; orguserid=d0999907H990; orguseridp=155183551; x-meli-session-id=armor.3d84e51c695c7982e4f0bc0bb42262c462ce8f89baa17fcde64049416c3eb95ca24daadcf50279bf19e5fc9ac1eaab960665ae0cb4e3cb171ff4f5aac38d5a087fdc78b9cb73e73a4bca9c328ee428f6e5a8db8953a9dd03f2f65d42048e88fd.8f1f9dbbd441d2bf95d188068a2d2a1a; cookiesPreferencesLoggedFallback=%7B%22userId%22%3A155183551%2C%22categories%22%3A%7B%22advertising%22%3Atrue%2C%22functionality%22%3Anull%2C%22performance%22%3Anull%2C%22traceability%22%3Anull%7D%7D; hide-cookie-banner_155183551=COOKIE_PREFERENCES_ALREADY_SET; tooltips-configuration={"gift_registry_tooltip":{"view_cnt":1,"close_cnt":1,"view_time":1737899570,"close_time":1737899570}}; category=MLB31447; LAST_SEARCH=daily%20t%20shirt%20insiderr; last_query=daily%20t%20shirt%20insiderr; _mldataSessionId=cabb9d70-8ebb-47ea-185b-8f8c12cb5744; cookiesPreferencesLogged=%7B%22userId%22%3A155183551%2C%22categories%22%3A%7B%22advertising%22%3Atrue%2C%22functionality%22%3Anull%2C%22performance%22%3Anull%2C%22traceability%22%3Anull%7D%7D'
+                            body_data = {
+                                "urls": [product_url],  
+                                "tag": "psysaldanha" 
+                            }
+                    
+                            headers = {
+                                "Content-Type": "application/json", 
+                                "x-csrf-token": "pOnsEYqH-z-GUKx9cafz9lYmObHzV_QYQht0", 
+                                "cookie": cookie, 
+                            }
+                            urlGenerationLink = f"{url_generation_link}"
+                            session = requests.Session()
+                            response = session.post(urlGenerationLink, json=body_data, headers=headers)
+                            response.raise_for_status()
+                            if response.status_code == 200:
+                                return response.json()
+                            else:
+                                return {"status": "error", "message": "Erro na requisição", "details": response.text}
+
+                return response.text
+        except Exception as e:
+            logging.error(f"Exception: {e}")
+            driver.quit()
+            return {"status": "error", "message": str(e)}
 
 @app.route("/dasn", methods=["POST"])
 def start_prenota():
@@ -288,6 +342,25 @@ def start_prenota_das():
 
       
     response = WebScraper.runDas(cnpj, ano, isApuration)
+    return jsonify(response)
+
+@app.route("/ml", methods=["POST"])
+def start_prenota_ml():
+    data = request.get_json()
+    urlLink = data.get("url")
+    site = data.get("site")
+    url_generation_link = data.get("url_generation_link")
+
+    if not urlLink:
+        return jsonify({"status": "error", "message": "URL is required"}), 400
+    
+    if not site:
+         return jsonify({"status": "error", "message": "Site is required"}), 400
+    
+    if not url_generation_link:
+        return jsonify({"status": "error", "message": "url_generation_link is required"}), 400
+    
+    response = WebScraper.mlink(urlLink, site, url_generation_link)
     return jsonify(response)
 
 if __name__ == "__main__":
