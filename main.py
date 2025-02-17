@@ -78,7 +78,7 @@ class WebScraper:
 
     @staticmethod
     def run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado):
-        options = webdriver.ChromeOptions()
+        options = udc.ChromeOptions()
         options.headless = False
      
         options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
@@ -86,9 +86,9 @@ class WebScraper:
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-gpu ")
         options.add_argument("--no-sandbox")
-        driver = udc.Chrome(options=options)  
-        
-      
+        driver = udc.Chrome(options=options, version_main=132)  
+    
+    
         try:
             url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
             driver.get(url)
@@ -146,13 +146,14 @@ class WebScraper:
     @staticmethod
     def runDas(cnpj, ano, isApuration):
         options = udc.ChromeOptions()
-        options.headless = True
+        options.headless = False
+        options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-blink-features=AutomationControlled")
         ua = UserAgent()
         user_agent = ua.random
         options.add_argument(f'--user-agent={user_agent}')
-        driver = udc.Chrome(use_subprocess=True, options=options)
+        driver = udc.Chrome(use_subprocess=True, options=options,  version_main=132 )
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
@@ -221,9 +222,10 @@ class WebScraper:
             driver.quit()
             return {"status": "error", "message": str(e), "cookies": []}
         
+        
     @staticmethod
     def mlink(urlLink, site, url_generation_link):
-        options = webdriver.ChromeOptions()
+        options = udc.ChromeOptions()
         options.headless = True
      
         options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
@@ -231,7 +233,7 @@ class WebScraper:
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-gpu ")
         options.add_argument("--no-sandbox")
-        driver = udc.Chrome(options=options)  
+        driver = udc.Chrome(options=options, version_main=132)  
 
         try:
             if site == 'ml':
@@ -366,4 +368,5 @@ def start_prenota_ml():
     return jsonify(response)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=5000)
