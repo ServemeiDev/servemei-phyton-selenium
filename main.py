@@ -30,7 +30,7 @@ import pdfkit
 
 
 app = Flask(__name__)
-config = pdfkit.configuration(wkhtmltopdf=r'C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe') 
+# config = pdfkit.configuration(wkhtmltopdf=r'C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe') 
 class WebScraper:
     @staticmethod
     def getCardCnpj(cnpj, hcapcha):
@@ -78,19 +78,109 @@ class WebScraper:
 
     @staticmethod
     def run(cnpj, ano, receita_servico, receita_comercio, informacao_empregado):
-        options = udc.ChromeOptions()
-        options.headless = False
-     
-        options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-gpu ")
-        options.add_argument("--no-sandbox")
-        driver = udc.Chrome(options=options, version_main=132)  
-    
-    
         try:
+            session = requests.Session()
             url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao'
+            url_login = "https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/dasnsimei.app/Identificacao/Continuar"
+            anti_captcha = "https://api.anti-captcha.com/createTask"
+            anti_capcha_result = "https://api.anti-captcha.com/getTaskResult"
+            clientKey = "7d41ad7805d9d752ab34c6c775afe217"
+
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Referer": url,
+                "Origin": url_login,
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Cache-Control": "max-age=0",
+                "DNT": "1"  # Indica que não quer ser rastreado
+            }
+
+            form_data_capcha = {
+                'clientKey': clientKey,
+                    'task': {
+                        'type': 'HCaptchaTaskProxyless',
+                        'websiteURL': url,
+                        'websiteKey': 'd787501d-4bd8-4262-bef0-e5ab524cbc8f',
+                        'isInvisible': True,
+                    },
+            } 
+
+            try:
+                response = requests.post(anti_captcha, json=form_data_capcha)
+                print(response.text)
+                response_data = response.json()
+                if response_data["errorId"]:
+                    return {"status": "error", "message": response_data["errorDescription"]}
+                
+                task_id = response_data["taskId"]
+                # Espera pela solução do captcha
+                solution = None
+                while not solution:
+                    solution_response = requests.post(anti_capcha_result, json={
+                        'clientKey': clientKey,
+                        'taskId': task_id,
+                    })
+
+                    solution_data = solution_response.json()
+                    if solution_data['status'] == 'ready':
+                        solution = solution_data['solution']['gRecaptchaResponse']
+                    else:
+                        print("Aguardando solução...")
+                        time.sleep(5)
+
+                # Retorna o resultado do hCaptcha
+                print(f"Solução do hCaptcha: {solution}")
+
+                # Realiza a requisição POST com o hCaptcha resolvido
+                response = session.get(url, headers=headers)
+
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    csrf_token = soup.find('input', {'name': '__RequestVerificationToken'})
+                    if csrf_token:
+                        token_value = csrf_token.get('value')
+                        print("csrf_token", token_value)
+                        form_data = {
+                            '__RequestVerificationToken': str(token_value),
+                            'cnpj': "44.375.245/0001-79",
+                            'g-recaptcha-response': str(solution),
+                            'h-captcha-response': str(solution)
+                        }
+
+                        print("Chamou a rota para logar com o capcha")
+
+                        response = session.post(url_login, data=form_data, headers=headers)
+                        soup = BeautifulSoup(response.text, 'html.parser')
+
+                        print(response.status_code)
+                        if response.status_code == 200:
+                            print(soup)
+                            print("Retornou código 200")
+                        elif response.status_code == 302:
+                            print(soup)
+                            print("Retornou código 302")
+                        elif response.status_code == 500:
+                            print(soup)
+                            print("Retornou código 500")
+                            
+                    else:
+                        return {"status": "error", "message": "Token CSRF não encontrado"}
+                
+                else:
+                    return {"status": "error", "message": "Erro na requisição", "details": response.text}
+                
+            except Exception as e:
+                logging.error(f"Exception: {e}")
+                return {"status": "error", "message": str(e)}
+
             driver.get(url)
             time.sleep(2)         
             input_element = driver.find_element(By.CSS_SELECTOR, "#identificacao-cnpj")
@@ -111,7 +201,6 @@ class WebScraper:
             if not cookies:
                 return {"status": "error", "message": "No cookies found"}
             
-            driver.quit()
             token = get_csrf_token_dasn(cookies)
             if not token:
                 return {"status": "error", "message": "Erro ao obter o token CSRF"}
@@ -136,18 +225,16 @@ class WebScraper:
                 "pdfNotificacao": pdfNotificacao
             }
 
-            driver.quit()
             return result
         except Exception as e:
             logging.error(f"Exception: {e}")
-            driver.quit()
             return {"status": "error", "message": str(e)}
 
     @staticmethod
     def runDas(cnpj, ano, isApuration):
         options = udc.ChromeOptions()
         options.headless = False
-        options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+        # options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-blink-features=AutomationControlled")
         ua = UserAgent()
@@ -174,7 +261,7 @@ class WebScraper:
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#continuar")))
             continuar_button.click()
             expected_url = 'https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Home/Inicio'
-            WebDriverWait(driver, 20).until(EC.url_to_be(expected_url))
+            WebDriverWait(driver, 25).until(EC.url_to_be(expected_url))
             cookies = driver.get_cookies()
             if not cookies:
                 return {"status": "error", "message": "No cookies found"}
@@ -228,7 +315,7 @@ class WebScraper:
         options = udc.ChromeOptions()
         options.headless = True
      
-        options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+        # options.binary_location = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
         options.add_argument("--start-maximized")
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-gpu ")
@@ -368,5 +455,4 @@ def start_prenota_ml():
     return jsonify(response)
 
 if __name__ == "__main__":
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5007)  # Modo DEV
